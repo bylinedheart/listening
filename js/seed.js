@@ -10,7 +10,7 @@ export function makeSamples() {
       ...base, id: 'sample-kind-of-blue', type: 'album', shelf: 'done',
       title: 'Kind of Blue', artist: 'Miles Davis', year: '1959',
       producer: 'Teo Macero, Irving Townsend', label: 'Columbia',
-      date: t, rating: 5, tags: ['jazz', 'late night'],
+      date: t, rating: 5, genres: ['jazz', 'modal jazz'], tags: ['late night'],
       note: 'Sample entry.',
       tracks: [
         { title: 'So What', length: 562000, rating: 5 },
@@ -24,27 +24,27 @@ export function makeSamples() {
       ...base, id: 'sample-teardrop', type: 'song', shelf: 'done',
       title: 'Teardrop', artist: 'Massive Attack', album: 'Mezzanine', year: '1998',
       producer: 'Neil Davidge, Massive Attack',
-      date: addDays(t, -1), rating: 4.5, tags: ['trip hop'], note: 'Sample entry.',
+      date: addDays(t, -1), rating: 4.5, genres: ['trip hop', 'downtempo'], tags: ['rainy day'], note: 'Sample entry.',
     },
     {
       ...base, id: 'sample-hounds-of-love', type: 'album', shelf: 'done',
       title: 'Hounds of Love', artist: 'Kate Bush', year: '1985', producer: 'Kate Bush', label: 'EMI',
-      date: addDays(t, -2), rating: 4.5, tags: ['art pop'], note: 'Sample entry.',
+      date: addDays(t, -2), rating: 4.5, genres: ['art pop', 'progressive pop'], tags: [], note: 'Sample entry.',
     },
     {
       ...base, id: 'sample-remain-in-light', type: 'album', shelf: 'done',
       title: 'Remain in Light', artist: 'Talking Heads', year: '1980', producer: 'Brian Eno', label: 'Sire',
-      date: addDays(t, -24), rating: 4, tags: ['new wave', 'funk'], note: 'Sample entry.',
+      date: addDays(t, -24), rating: 4, genres: ['new wave', 'funk', 'art rock'], tags: ['dance'], note: 'Sample entry.',
     },
     {
       ...base, id: 'sample-promises', type: 'album', shelf: 'now',
       title: 'Promises', artist: 'Floating Points, Pharoah Sanders & LSO', year: '2021',
-      producer: 'Sam Shepherd', tags: ['ambient', 'jazz'], note: 'Sample entry.',
+      producer: 'Sam Shepherd', genres: ['ambient', 'spiritual jazz', 'contemporary classical'], tags: ['focus'], note: 'Sample entry.',
     },
     {
       ...base, id: 'sample-spirit-of-eden', type: 'album', shelf: 'want',
       title: 'Spirit of Eden', artist: 'Talk Talk', year: '1988', producer: 'Tim Friese-Greene',
-      tags: ['art rock'], note: 'Sample entry.',
+      genres: ['art rock', 'post-rock'], tags: [], note: 'Sample entry.',
     },
   ];
 }
