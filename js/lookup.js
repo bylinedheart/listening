@@ -95,17 +95,28 @@ function producersFrom(relations, out) {
     if (rel.type === 'producer' && rel.artist?.name) out.add(rel.artist.name);
   });
 }
-const topGenres = (obj) => [...(obj.genres || []), ...(obj.tags || [])]
+const topGenres = (obj, max = 4) => (obj.genres || [])
+  .filter((g) => g.name && (g.count || 0) > 0)
   .sort((a, b) => (b.count || 0) - (a.count || 0))
   .map((g) => g.name.toLowerCase())
   .filter((v, i, a) => a.indexOf(v) === i)
-  .slice(0, 3);
+  .slice(0, max);
+
+/** Genres voted on the whole album (release group); individual releases often have none. */
+async function releaseGroupGenres(rgid) {
+  if (!rgid) return [];
+  try {
+    return topGenres(await mb(`/release-group/${rgid}?inc=genres`));
+  } catch {
+    return [];
+  }
+}
 
 /** Full details for an album search result. */
 export async function albumDetails(result) {
   const fields = {
     type: 'album', title: result.title, artist: result.artist, year: result.year,
-    cover: result.cover, mbid: result.rgid, tracks: [], producer: '', label: '', tags: [],
+    cover: result.cover, mbid: result.rgid, tracks: [], producer: '', label: '', genres: [],
   };
   if (!result.releaseId) return fields;
   const r = await mb(`/release/${result.releaseId}?inc=recordings+artist-credits+labels+genres+artist-rels+recording-level-rels`);
@@ -117,7 +128,8 @@ export async function albumDetails(result) {
   }));
   fields.producer = [...producers].slice(0, 4).join(', ');
   fields.label = r['label-info']?.find((l) => l.label?.name)?.label.name || '';
-  fields.tags = topGenres(r);
+  fields.genres = topGenres(r);
+  if (!fields.genres.length) fields.genres = await releaseGroupGenres(result.rgid);
   if (!fields.year) fields.year = year(r.date);
   return fields;
 }
@@ -126,12 +138,13 @@ export async function albumDetails(result) {
 export async function songDetails(result) {
   const fields = {
     type: 'song', title: result.title, artist: result.artist, album: result.album,
-    year: result.year, cover: result.cover, mbid: result.recordingId, producer: '', tags: [], tracks: [],
+    year: result.year, cover: result.cover, mbid: result.recordingId, producer: '', genres: [], tracks: [],
   };
   const r = await mb(`/recording/${result.recordingId}?inc=artist-rels+genres`);
   const producers = new Set();
   producersFrom(r.relations, producers);
   fields.producer = [...producers].slice(0, 4).join(', ');
-  fields.tags = topGenres(r);
+  fields.genres = topGenres(r);
+  if (!fields.genres.length) fields.genres = await releaseGroupGenres(result.rgid);
   return fields;
 }
