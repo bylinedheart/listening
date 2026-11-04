@@ -1,9 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#efe9dd"/>
-  <circle cx="256" cy="256" r="176" fill="#1e1b16"/>
-  <g fill="none" stroke="#3a352d" stroke-width="3">
-    <circle cx="256" cy="256" r="160"/><circle cx="256" cy="256" r="142"/><circle cx="256" cy="256" r="124"/><circle cx="256" cy="256" r="106"/>
+  <rect width="512" height="512" rx="112" fill="#f4efff"/>
+  <circle cx="268" cy="268" r="176" fill="#1c1233"/>
+  <circle cx="256" cy="256" r="176" fill="#1c1233"/>
+  <g fill="none" stroke="#3a2d5c" stroke-width="3">
+    <circle cx="256" cy="256" r="158"/><circle cx="256" cy="256" r="142"/><circle cx="256" cy="256" r="126"/><circle cx="256" cy="256" r="110"/>
   </g>
-  <circle cx="256" cy="256" r="72" fill="#b9412a"/>
-  <circle cx="256" cy="256" r="10" fill="#efe9dd"/>
+  <g transform="translate(256 256)">
+    <path d="M0 0L0 -72A72 72 0 0 1 72 0Z" fill="#ff4f9a"/>
+    <path d="M0 0L72 0A72 72 0 0 1 0 72Z" fill="#ffd23f"/>
+    <path d="M0 0L0 72A72 72 0 0 1 -72 0Z" fill="#36cfee"/>
+    <path d="M0 0L-72 0A72 72 0 0 1 0 -72Z" fill="#3ddc84"/>
+  </g>
+  <circle cx="256" cy="256" r="11" fill="#f4efff"/>
 </svg>

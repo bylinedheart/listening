@@ -1,6 +1,6 @@
 # Listening
 
-A personal music listening log. Plain HTML, CSS and JavaScript: no build step, no backend, no external libraries. Built for a phone first and installable as an app, so it works offline from your home screen.
+A personal music listening log. Plain HTML, CSS and JavaScript: no build step, no backend, no external libraries. Built for a phone first and installable as an app, so it works offline from your home screen. Light and dark modes follow your phone's setting.
 
 ## Features
 
@@ -73,6 +73,7 @@ js/util.js            Date and formatting helpers
 sw.js                 Service worker for offline use
 manifest.webmanifest  App name, colors and icons for installing
 icons/                App icons
+fonts/                Bundled fonts (SIL Open Font License)
 ```
 
 ## Backup file format

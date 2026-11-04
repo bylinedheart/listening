@@ -1,5 +1,5 @@
 // Inline SVG charts. No libraries.
-import { esc } from './util.js';
+import { esc, colorVar } from './util.js';
 
 /** Bar with rounded top corners, flat on the baseline. */
 function barPath(x, y, w, h, r = 3) {
@@ -66,7 +66,7 @@ export function barList(items, { limit = 6, empty = 'Nothing yet.' } = {}) {
   if (!top.length) return `<p class="muted small">${esc(empty)}</p>`;
   const max = top[0].n;
   return `<ol class="hbars">${top.map((it) => `
-    <li class="hbar">
+    <li class="hbar" style="--bar-c:${colorVar(it.name)}">
       <span class="hbar-name" title="${esc(it.name)}">${esc(it.name)}</span>
       <svg aria-hidden="true">
         <rect class="track" x="0" y="4" width="100%" height="2" rx="1"/>
