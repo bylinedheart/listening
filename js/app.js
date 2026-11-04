@@ -770,6 +770,7 @@ installStarInputs(document);
 store.seedIfNeeded(makeSamples);
 store.subscribe(() => { if (!sheet.open) render(); });
 render();
+if (store.loadError()) toast('Saved data could not be read. A copy was kept on this device.');
 
 // Re-render when the date changes (e.g. app left open overnight).
 let lastDay = todayISO();
@@ -786,5 +787,5 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     reloading = true;
     location.reload();
   });
-  navigator.serviceWorker.register('sw.js').then((reg) => reg.update()).catch((err) => console.warn('Service worker not registered', err));
+  navigator.serviceWorker.register('sw.js').then((reg) => reg && reg.update()).catch((err) => console.warn('Service worker not registered', err));
 }

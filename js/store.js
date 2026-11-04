@@ -10,25 +10,38 @@ export const SHELVES = [
 export const shelfLabel = (id) => (SHELVES.find((s) => s.id === id) || SHELVES[2]).label;
 
 const listeners = new Set();
-let db = load();
 
 function blank() {
   return { version: 1, entries: [], meta: { seeded: false, lastExport: null, lastChange: null } };
 }
 
+let loadProblem = null;
+export const loadError = () => loadProblem;
+
+function safeNormalize(e) {
+  try { return normalize(e); } catch (err) { console.warn('Skipped an unreadable entry', err, e); return null; }
+}
+
 function load() {
+  let raw = null;
   try {
-    const raw = localStorage.getItem(KEY);
+    raw = localStorage.getItem(KEY);
     if (raw) {
       const d = JSON.parse(raw);
       return {
         version: 1,
-        entries: Array.isArray(d.entries) ? d.entries.map(normalize).filter(Boolean) : [],
+        entries: Array.isArray(d.entries) ? d.entries.map(safeNormalize).filter(Boolean) : [],
         meta: { ...blank().meta, ...(d.meta || {}) },
       };
     }
   } catch (err) {
-    console.warn('Could not read saved data', err);
+    console.error('Could not read saved data', err);
+    // Never write over data we could not read: keep a copy and skip the samples.
+    if (raw) {
+      loadProblem = err;
+      try { localStorage.setItem(`${KEY}.unreadable-${Date.now()}`, raw); } catch { /* ignore */ }
+      return { ...blank(), meta: { ...blank().meta, seeded: true } };
+    }
   }
   return blank();
 }
@@ -48,11 +61,13 @@ function persist(userChange = true) {
 export const lastWriteError = () => writeError;
 export const subscribe = (fn) => (listeners.add(fn), () => listeners.delete(fn));
 
-const halfStep = (n) => {
+function halfStep(n) {
   const v = Math.round(Number(n) * 2) / 2;
   return Number.isFinite(v) ? Math.min(5, Math.max(0, v)) : 0;
-};
-const str = (v, max = 300) => (v == null ? '' : String(v).trim().slice(0, max));
+}
+function str(v, max = 300) {
+  return v == null ? '' : String(v).trim().slice(0, max);
+}
 
 /** Coerce anything entry-shaped into a valid entry (or null). */
 export function normalize(e) {
@@ -179,3 +194,6 @@ export function eraseAll() {
   db.entries = [];
   persist();
 }
+
+// Load last, once every helper above is defined.
+let db = load();
