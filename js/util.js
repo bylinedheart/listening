@@ -79,6 +79,10 @@ function hash(s) {
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
   return Math.abs(h);
 }
+const PALETTE = ['pink', 'yellow', 'cyan', 'green', 'orange', 'violet'];
+/** A palette colour that always follows the same name (tag, artist). */
+export const colorVar = (name) => `var(--c-${PALETTE[hash(String(name).toLowerCase()) % PALETTE.length]})`;
+
 function initials(e) {
   const words = String(e.title || '?').replace(/^the\s+/i, '').split(/\s+/).filter(Boolean);
   return words.slice(0, 2).map((w) => w[0]).join('').toUpperCase();

@@ -7,7 +7,7 @@ import { computeStats, logged } from './stats.js';
 import { columnChart, bindColumnChart, barList } from './charts.js';
 import {
   esc, todayISO, fmtDate, fmtLongDate, monthKey, monthLabel, monthShort, topbarDate,
-  daysAgo, relDays, fmtRating, fmtLen, coverHTML, cmpText, debounce, parseISO,
+  daysAgo, relDays, fmtRating, fmtLen, coverHTML, cmpText, debounce, parseISO, colorVar,
 } from './util.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -424,7 +424,7 @@ function openDetail(id) {
     </div>
     ${e.note || e.tags.length ? `<div class="section">
       ${e.note ? `<p class="note">${esc(e.note)}</p>` : ''}
-      ${e.tags.length ? `<div class="chips" style="margin-top:${e.note ? 8 : 0}px">${e.tags.map((t) => `<span class="chip chip-static">${esc(t)}</span>`).join('')}</div>` : ''}
+      ${e.tags.length ? `<div class="chips" style="margin-top:${e.note ? 8 : 0}px">${e.tags.map((t) => `<span class="chip chip-static" style="--chip:${colorVar(t)}">${esc(t)}</span>`).join('')}</div>` : ''}
     </div>` : ''}
     ${e.tracks.length ? `<div class="section">
       <div class="section-head"><span class="label">Tracks · ${e.tracks.length}</span><span class="muted small" id="track-avg">${trackAvg ? `Track average ${trackAvg}` : 'Tap stars to rate'}</span></div>
@@ -566,7 +566,7 @@ function openForm({ id, preset } = {}) {
     </div>`;
 
   function tagChips() {
-    return suggestions().map((t) => `<button type="button" class="chip" data-tag="${esc(t)}">+ ${esc(t)}</button>`).join('');
+    return suggestions().map((t) => `<button type="button" class="chip" data-tag="${esc(t)}" style="--chip:${colorVar(t)}">+ ${esc(t)}</button>`).join('');
   }
   function tracksHTML() {
     return draft.tracks.map((t, i) => `<li class="track track-edit">
