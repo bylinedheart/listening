@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Listening</title>
+  <meta name="description" content="A personal log of albums and songs.">
+  <meta name="theme-color" content="#efe9dd" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#15130f" media="(prefers-color-scheme: dark)">
+  <meta name="color-scheme" content="light dark">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Listening">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/app.css">
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="wordmark" href="#shelves">Listening</a>
+    <span class="topbar-date" id="topbar-date"></span>
+  </header>
+
+  <main id="view" class="view" tabindex="-1"></main>
+
+  <nav class="tabbar" aria-label="Sections">
+    <a href="#shelves" data-nav="shelves">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h3v14H4zM9.5 5h3v14h-3zM15 6.2l2.9-.8 3.1 13.4-2.9.8z"/></svg>
+      <span>Shelves</span>
+    </a>
+    <a href="#history" data-nav="history">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+      <span>History</span>
+    </a>
+    <button type="button" class="tab-log" id="log-btn" aria-label="Log a listen">
+      <span class="tab-log-disc" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 7v10M7 12h10"/></svg></span>
+      <span>Log</span>
+    </button>
+    <a href="#stats" data-nav="stats">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V11M12 20V5M19 20v-6"/></svg>
+      <span>Stats</span>
+    </a>
+    <a href="#data" data-nav="data">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v12H4zM4 7l2-3h12l2 3M9 11h6"/></svg>
+      <span>Data</span>
+    </a>
+  </nav>
+
+  <dialog id="sheet" class="sheet" aria-labelledby="sheet-title"></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
