@@ -75,3 +75,74 @@ export function barList(items, { limit = 6, empty = 'Nothing yet.' } = {}) {
       <span class="hbar-n">${it.n}</span>
     </li>`).join('')}</ol>`;
 }
+
+const PALETTE_ORDER = ['pink', 'yellow', 'cyan', 'green', 'orange', 'violet'];
+
+/**
+ * Give each shown genre its usual colour (the one its chips use) unless an
+ * earlier, bigger genre already took it; then use the next free colour.
+ */
+function assignColors(names) {
+  const used = new Set();
+  return names.map((name) => {
+    let c = colorVar(name).match(/--c-(\w+)/)[1];
+    if (used.has(c)) c = PALETTE_ORDER.find((p) => !used.has(p)) || c;
+    used.add(c);
+    return `var(--c-${c})`;
+  });
+}
+
+/** Part-to-whole bar of genres with a legend. data = genreBreakdown(). */
+export function genreChart(data, { limit = 6 } = {}) {
+  if (!data.items.length) return '<p class="muted small">Add genres to your listens to see this.</p>';
+  const top = data.items.slice(0, limit);
+  const rest = data.items.slice(limit);
+  const colors = assignColors(top.map((g) => g.name));
+  const rows = top.map((g, i) => ({ ...g, color: colors[i] }));
+  if (rest.length) {
+    rows.push({
+      name: `Other (${rest.length})`, other: true, color: 'var(--star-off)',
+      share: rest.reduce((s, g) => s + g.share, 0), n: null,
+    });
+  }
+  const pct = (v) => `${Math.round(v * 100)}%`;
+  let x = 0;
+  const segs = rows.map((r, i) => {
+    const w = r.share * 100;
+    const seg = `<rect class="gseg" data-g="${i}" x="${x}%" y="0" width="${w}%" height="100%" style="fill:${r.color}"><title>${esc(r.name)}: ${pct(r.share)}</title></rect>`;
+    x += w;
+    return seg;
+  });
+  // Dividers between segments, drawn on top so every segment keeps a visible edge.
+  let acc = 0;
+  const lines = rows.slice(0, -1).map((r) => { acc += r.share * 100; return `<line x1="${acc}%" x2="${acc}%" y1="0" y2="100%"/>`; });
+  return `
+    <svg class="gbar" role="img" aria-label="${esc(rows.map((r) => `${r.name} ${pct(r.share)}`).join(', '))}">
+      ${segs.join('')}<g class="gdiv">${lines.join('')}</g>
+    </svg>
+    <ul class="glegend">${rows.map((r, i) => `
+      <li><button type="button" class="grow" data-g="${i}">
+        <span class="gswatch" style="background:${r.color}"></span>
+        <span class="gname">${esc(r.name)}</span>
+        <span class="gn">${r.n === null ? '' : `${r.n} ${r.n === 1 ? 'listen' : 'listens'}`}</span>
+        <span class="gpct">${pct(r.share)}</span>
+      </button></li>`).join('')}
+    </ul>`;
+}
+
+/** Tap or hover a segment or legend row to pick it out. */
+export function bindGenreChart(panel) {
+  if (!panel) return;
+  let pinned = null;
+  const show = (i) => {
+    panel.classList.toggle('has-focus', i !== null);
+    panel.querySelectorAll('[data-g]').forEach((el) => el.classList.toggle('is-on', el.dataset.g === i));
+  };
+  panel.addEventListener('pointerover', (e) => { const t = e.target.closest('[data-g]'); if (t && pinned === null) show(t.dataset.g); });
+  panel.addEventListener('pointerleave', () => { if (pinned === null) show(null); });
+  panel.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-g]');
+    pinned = t && pinned !== t.dataset.g ? t.dataset.g : null;
+    show(pinned);
+  });
+}
