@@ -275,17 +275,17 @@ input[type="date"]::-webkit-date-and-time-value { text-align: left; }
 /* ---------- Shelves ---------- */
 .shelf-tabs {
   display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 0 -2px 12px; gap: 4px;
+  margin: 0 -4px 12px; gap: 2px;
   border-bottom: 1px solid var(--line-2);
 }
 .shelf-tab {
   position: relative; min-width: 0;
   display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
-  padding: 8px 10px 9px;
+  padding: 8px 8px 9px;
   border: 1px solid transparent; border-bottom: 0; border-radius: var(--r-sm) var(--r-sm) 0 0;
   background: transparent; text-align: left; color: var(--ink-3);
 }
-.shelf-tab-name { font: 600 13px/1.15 var(--sans); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.shelf-tab-name { font: 600 12.5px/1.15 var(--sans); letter-spacing: -.01em; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .shelf-tab-count { font: 500 18px/1 var(--serif); color: inherit; }
 .shelf-tab[aria-selected="true"] {
   background: var(--surface); color: var(--ink); border-color: var(--line-2);
@@ -307,7 +307,8 @@ input[type="date"]::-webkit-date-and-time-value { text-align: left; }
 .item-title { font: 600 16px/1.2 var(--serif); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .item-artist { font-size: 13.5px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .item-meta { display: flex; align-items: center; gap: 8px; min-width: 0; margin-top: 2px; font: 11.5px/1.2 var(--mono); color: var(--ink-3); overflow: hidden; white-space: nowrap; }
-.item-meta > span { overflow: hidden; text-overflow: ellipsis; }
+.item-meta > span { flex: none; }
+.item-meta > span:last-child { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .item-side { display: grid; justify-items: end; gap: 6px; }
 .badge {
   display: inline-block; padding: 2px 6px; border-radius: 4px;
