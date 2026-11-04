@@ -1,6 +1,6 @@
 // Service worker: keeps the app shell available offline and caches album covers.
 // Bump VERSION when you change the list of shell files.
-const VERSION = 'v1';
+const VERSION = 'v2';
 const SHELL_CACHE = `listening-shell-${VERSION}`;
 const COVER_CACHE = 'listening-covers';
 const COVER_LIMIT = 150; // opaque responses count heavily toward storage quota
@@ -26,7 +26,7 @@ const SHELL = [
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(SHELL_CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  event.waitUntil(caches.open(SHELL_CACHE).then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (event) => {

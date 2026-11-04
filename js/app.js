@@ -358,7 +358,8 @@ function removeSamples() {
 }
 
 // ---------------------------------------------------------------- Sheet
-function openSheet(title, body, foot, mount) {
+function openSheet(title, body, foot, mount, { tall = false } = {}) {
+  sheet.classList.toggle('sheet-tall', tall);
   sheet.innerHTML = `
     <div class="sheet-head"><h2 id="sheet-title">${esc(title)}</h2>
       <button type="button" class="icon-btn" data-close aria-label="Close">${ICON.close}</button></div>
@@ -369,6 +370,27 @@ function openSheet(title, body, foot, mount) {
   if (mount) mount(sheet);
 }
 function closeSheet() { if (sheet.open) sheet.close(); }
+
+// Keep the sheet inside the visible area when the on-screen keyboard is open.
+// iOS Safari does not resize the layout viewport for the keyboard, so fixed
+// elements at bottom: 0 end up behind it.
+function trackViewport() {
+  const vv = window.visualViewport;
+  if (!vv) return;
+  const update = () => {
+    const below = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
+    document.documentElement.style.setProperty('--vv-h', `${vv.height}px`);
+    document.documentElement.style.setProperty('--vv-bottom', `${below}px`);
+  };
+  vv.addEventListener('resize', update);
+  vv.addEventListener('scroll', update);
+  update();
+}
+trackViewport();
+sheet.addEventListener('focusin', (e) => {
+  if (!e.target.matches('input, textarea, select')) return;
+  setTimeout(() => e.target.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 300);
+});
 sheet.addEventListener('click', (e) => {
   if (e.target === sheet || e.target.closest('[data-close]')) closeSheet();
 });
@@ -456,6 +478,7 @@ function openDetail(id) {
       $('#track-avg', sheet).textContent = r.length ? `Track average ${(r.reduce((s, t) => s + t.rating, 0) / r.length).toFixed(1)}` : 'Tap stars to rate';
     }
   }
+  if (e.tracks.length) sheet.classList.add('sheet-tall');
 }
 
 // ---------------------------------------------------------------- Form
@@ -708,8 +731,9 @@ function openForm({ id, preset } = {}) {
         setStatus(`Filled in from MusicBrainz${n ? ` with ${n} tracks` : ''}. Check the details, then save.`);
       }
     });
-    setTimeout(() => qInput.focus({ preventScroll: true }), 50);
-  });
+    // Only autofocus with a mouse; on phones, let a tap open the keyboard.
+    if (matchMedia('(pointer: fine)').matches) setTimeout(() => qInput.focus({ preventScroll: true }), 50);
+  }, { tall: true });
 }
 
 // ---------------------------------------------------------------- global actions
@@ -754,5 +778,13 @@ document.addEventListener('visibilitychange', () => {
 });
 
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-  navigator.serviceWorker.register('sw.js').catch((err) => console.warn('Service worker not registered', err));
+  // Reload once when a new version of the app takes over, so fixes apply right away.
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController || reloading || sheet.open) return;
+    reloading = true;
+    location.reload();
+  });
+  navigator.serviceWorker.register('sw.js').then((reg) => reg.update()).catch((err) => console.warn('Service worker not registered', err));
 }
