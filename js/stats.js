@@ -25,6 +25,30 @@ export function streaks(dates, today = todayISO()) {
   return { current, longest, longestEnd, activeToday: set.has(t) };
 }
 
+/**
+ * Genre breakdown. Each listen counts once in total and is split evenly
+ * across its genres, so shares add up to 100%. `n` is the number of
+ * listens that include the genre.
+ */
+export function genreBreakdown(listens) {
+  const withGenres = listens.filter((e) => e.genres.length);
+  const m = new Map();
+  withGenres.forEach((e) => {
+    const w = 1 / e.genres.length;
+    e.genres.forEach((g) => {
+      const cur = m.get(g) || { name: g, n: 0, weight: 0 };
+      cur.n += 1;
+      cur.weight += w;
+      m.set(g, cur);
+    });
+  });
+  const total = withGenres.length;
+  const items = [...m.values()]
+    .map((g) => ({ ...g, share: total ? g.weight / total : 0 }))
+    .sort((a, b) => b.weight - a.weight || b.n - a.n || a.name.localeCompare(b.name));
+  return { items, listens: total, without: listens.length - total };
+}
+
 export function computeStats(entries) {
   const L = logged(entries);
   const rated = L.filter((e) => e.rating > 0);
@@ -49,6 +73,7 @@ export function computeStats(entries) {
     avg,
     artists: countBy(L, (e) => e.artist),
     tags: countBy(L, (e) => e.tags),
+    genres: genreBreakdown(L),
     months,
     thisMonth,
     dist,

@@ -4,11 +4,11 @@ A personal music listening log. Plain HTML, CSS and JavaScript: no build step, n
 
 ## Features
 
-- **Log a listen**: album or song, artist, date (defaults to today), half-star rating, a short note, and tags for genre or mood. You can rate each track on an album separately.
+- **Log a listen**: album or song, artist, date (defaults to today), half-star rating, a short note, any number of genres, and tags for anything else (mood, place, occasion). Type a genre and press return or a comma, or tap a suggestion; tap × on a chip to remove it. You can rate each track on an album separately.
 - **Quick add**: search for an album or song, then tap a result to fill in the cover, artist, release year, producers, label, genres and full track list. This uses [MusicBrainz](https://musicbrainz.org) and the [Cover Art Archive](https://coverartarchive.org). Both are free and need no API key. Type `title - artist` to narrow a search.
 - **Shelves**: Listening now, Want to hear, and Logged. Tap any item to move it between shelves, rate it, or edit it.
-- **History**: a compact list of logged listens, newest first, grouped by month. You can search it and filter by artist, tag and rating.
-- **Stats**: total listens, average rating, current and longest streak (consecutive days with at least one listen), listens per month, top artists, top tags, and how your ratings are spread. All charts are inline SVG.
+- **History**: a compact list of logged listens, newest first, grouped by month. You can search it and filter by artist, genre, tag and rating.
+- **Stats**: total listens, average rating, a genre breakdown (share of listens; a listen with several genres is split evenly between them), current and longest streak (consecutive days with at least one listen), listens per month, top artists, top tags, and how your ratings are spread. All charts are inline SVG.
 - **Backup**: export everything to a JSON file and import it again (merge or replace). The Data tab shows when you last exported, and the Shelves tab shows a reminder when you have changes that are more than a week past your last export.
 - **Sample entries**: on first run, six entries marked "Sample" are added so you can see how things look. Remove them all with **Remove samples** on the Shelves tab or the Data tab.
 
@@ -83,7 +83,7 @@ An export is a JSON file like this:
 ```json
 {
   "app": "listening",
-  "version": 1,
+  "version": 2,
   "exportedAt": "2026-11-04T18:00:00.000Z",
   "entries": [
     {
@@ -95,7 +95,8 @@ An export is a JSON file like this:
       "shelf": "done",
       "rating": 4.5,
       "note": "",
-      "tags": ["jazz"],
+      "genres": ["jazz", "modal jazz"],
+      "tags": ["late night"],
       "year": "1959",
       "producer": "Teo Macero",
       "label": "Columbia",
@@ -107,4 +108,4 @@ An export is a JSON file like this:
 }
 ```
 
-`shelf` is one of `now`, `want` or `done`. Ratings go from 0 (unrated) to 5 in steps of 0.5.
+`shelf` is one of `now`, `want` or `done`. Files from before genres had their own field (version 1) still import: tags that are well-known genre names move into `genres`. Ratings go from 0 (unrated) to 5 in steps of 0.5.

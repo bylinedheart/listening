@@ -1,5 +1,6 @@
 // localStorage-backed data store.
 import { uid, todayISO } from './util.js';
+import { isKnownGenre } from './genres.js';
 
 const KEY = 'listening.v1';
 export const SHELVES = [
@@ -10,25 +11,51 @@ export const SHELVES = [
 export const shelfLabel = (id) => (SHELVES.find((s) => s.id === id) || SHELVES[2]).label;
 
 const listeners = new Set();
-let db = load();
 
 function blank() {
-  return { version: 1, entries: [], meta: { seeded: false, lastExport: null, lastChange: null } };
+  return { version: 1, entries: [], meta: { seeded: false, lastExport: null, lastChange: null, genresSplit: true } };
+}
+
+/** Before genres had their own field they were stored as tags. Move the ones that are clearly genres. */
+function splitGenreTags(e) {
+  if (e.genres.length) return;
+  e.genres = e.tags.filter(isKnownGenre);
+  e.tags = e.tags.filter((t) => !isKnownGenre(t));
+}
+
+let loadProblem = null;
+export const loadError = () => loadProblem;
+
+function safeNormalize(e) {
+  try { return normalize(e); } catch (err) { console.warn('Skipped an unreadable entry', err, e); return null; }
 }
 
 function load() {
+  let raw = null;
   try {
-    const raw = localStorage.getItem(KEY);
+    raw = localStorage.getItem(KEY);
     if (raw) {
       const d = JSON.parse(raw);
-      return {
+      const loaded = {
         version: 1,
-        entries: Array.isArray(d.entries) ? d.entries.map(normalize).filter(Boolean) : [],
-        meta: { ...blank().meta, ...(d.meta || {}) },
+        entries: Array.isArray(d.entries) ? d.entries.map(safeNormalize).filter(Boolean) : [],
+        meta: { ...blank().meta, ...(d.meta || {}), genresSplit: !!(d.meta && d.meta.genresSplit) },
       };
+      if (!loaded.meta.genresSplit) {
+        loaded.entries.forEach(splitGenreTags);
+        loaded.meta.genresSplit = true;
+        try { localStorage.setItem(KEY, JSON.stringify(loaded)); } catch { /* ignore */ }
+      }
+      return loaded;
     }
   } catch (err) {
-    console.warn('Could not read saved data', err);
+    console.error('Could not read saved data', err);
+    // Never write over data we could not read: keep a copy and skip the samples.
+    if (raw) {
+      loadProblem = err;
+      try { localStorage.setItem(`${KEY}.unreadable-${Date.now()}`, raw); } catch { /* ignore */ }
+      return { ...blank(), meta: { ...blank().meta, seeded: true } };
+    }
   }
   return blank();
 }
@@ -48,11 +75,18 @@ function persist(userChange = true) {
 export const lastWriteError = () => writeError;
 export const subscribe = (fn) => (listeners.add(fn), () => listeners.delete(fn));
 
-const halfStep = (n) => {
+function halfStep(n) {
   const v = Math.round(Number(n) * 2) / 2;
   return Number.isFinite(v) ? Math.min(5, Math.max(0, v)) : 0;
-};
-const str = (v, max = 300) => (v == null ? '' : String(v).trim().slice(0, max));
+}
+function str(v, max = 300) {
+  return v == null ? '' : String(v).trim().slice(0, max);
+}
+
+function cleanList(v) {
+  return [...new Set((Array.isArray(v) ? v : String(v || '').split(','))
+    .map((t) => str(t, 40).toLowerCase()).filter(Boolean))].slice(0, 12);
+}
 
 /** Coerce anything entry-shaped into a valid entry (or null). */
 export function normalize(e) {
@@ -72,8 +106,8 @@ export function normalize(e) {
     shelf,
     rating: halfStep(e.rating),
     note: str(e.note, 1000),
-    tags: [...new Set((Array.isArray(e.tags) ? e.tags : String(e.tags || '').split(','))
-      .map((t) => str(t, 40).toLowerCase()).filter(Boolean))].slice(0, 12),
+    genres: cleanList(e.genres),
+    tags: cleanList(e.tags),
     year: str(e.year, 4).replace(/\D/g, ''),
     producer: str(e.producer),
     label: str(e.label),
@@ -125,9 +159,11 @@ export function seedIfNeeded(makeSamples) {
   persist(false);
 }
 
-export function allTags() {
+export const allTags = () => ranked('tags');
+export const allGenres = () => ranked('genres');
+function ranked(field) {
   const counts = new Map();
-  db.entries.forEach((e) => e.tags.forEach((t) => counts.set(t, (counts.get(t) || 0) + 1)));
+  db.entries.forEach((e) => e[field].forEach((t) => counts.set(t, (counts.get(t) || 0) + 1)));
   return [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([t]) => t);
 }
 
@@ -135,7 +171,7 @@ export function allTags() {
 export function exportJSON() {
   return JSON.stringify({
     app: 'listening',
-    version: 1,
+    version: 2,
     exportedAt: new Date().toISOString(),
     entries: db.entries,
   }, null, 2);
@@ -158,6 +194,7 @@ export function parseImport(text) {
   const list = Array.isArray(data) ? data : data && Array.isArray(data.entries) ? data.entries : null;
   if (!list) throw new Error('No entries found in this file.');
   const entries = list.map(normalize).filter(Boolean);
+  if (!(data && Array.isArray(data.entries) && data.version >= 2)) entries.forEach(splitGenreTags);
   if (!entries.length && list.length) throw new Error('None of the entries in this file could be read.');
   return entries;
 }
@@ -179,3 +216,6 @@ export function eraseAll() {
   db.entries = [];
   persist();
 }
+
+// Load last, once every helper above is defined.
+let db = load();

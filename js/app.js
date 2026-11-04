@@ -4,7 +4,8 @@ import { makeSamples } from './seed.js';
 import { starsHTML, starInputHTML, installStarInputs } from './stars.js';
 import { searchAlbums, searchSongs, albumDetails, songDetails } from './lookup.js';
 import { computeStats, logged } from './stats.js';
-import { columnChart, bindColumnChart, barList } from './charts.js';
+import { columnChart, bindColumnChart, barList, genreChart, bindGenreChart } from './charts.js';
+import { COMMON_GENRES, STARTER_GENRES } from './genres.js';
 import {
   esc, todayISO, fmtDate, fmtLongDate, monthKey, monthLabel, monthShort, topbarDate,
   daysAgo, relDays, fmtRating, fmtLen, coverHTML, cmpText, debounce, parseISO, colorVar,
@@ -17,7 +18,7 @@ const sheet = $('#sheet');
 
 const ui = {
   shelf: 'now',
-  q: '', artist: '', tag: '', rating: '', type: '',
+  q: '', artist: '', genre: '', tag: '', rating: '', type: '',
 };
 try { Object.assign(ui, JSON.parse(sessionStorage.getItem('listening.ui') || '{}')); } catch { /* ignore */ }
 const saveUI = () => { try { sessionStorage.setItem('listening.ui', JSON.stringify(ui)); } catch { /* ignore */ } };
@@ -57,7 +58,8 @@ function itemMeta(e) {
   const bits = [];
   if (e.shelf === 'done' && e.date) bits.push(fmtDate(e.date));
   if (e.year) bits.push(e.year);
-  if (e.tags.length) bits.push(e.tags.slice(0, 2).join(', '));
+  const labels = e.genres.length ? e.genres : e.tags;
+  if (labels.length) bits.push(labels.slice(0, 2).join(', '));
   return bits.map((b) => `<span>${esc(b)}</span>`).join('<span aria-hidden="true">·</span>');
 }
 
@@ -142,10 +144,11 @@ function historyItems() {
   const q = ui.q.trim().toLowerCase();
   return logged(store.all())
     .filter((e) => !ui.artist || e.artist === ui.artist)
+    .filter((e) => !ui.genre || e.genres.includes(ui.genre))
     .filter((e) => !ui.tag || e.tags.includes(ui.tag))
     .filter((e) => !ui.type || e.type === ui.type)
     .filter((e) => matchesRating(e, ui.rating))
-    .filter((e) => !q || [e.title, e.artist, e.album, e.note, e.producer, e.label, ...e.tags, ...e.tracks.map((t) => t.title)]
+    .filter((e) => !q || [e.title, e.artist, e.album, e.note, e.producer, e.label, ...e.genres, ...e.tags, ...e.tracks.map((t) => t.title)]
       .join('\n').toLowerCase().includes(q))
     .sort((a, b) => b.date.localeCompare(a.date) || b.updated.localeCompare(a.updated));
 }
@@ -154,6 +157,8 @@ function renderHistory() {
   const all = logged(store.all());
   const artists = [...new Set(all.map((e) => e.artist).filter(Boolean))].sort(cmpText);
   const tags = [...new Set(all.flatMap((e) => e.tags))].sort(cmpText);
+  const genres = [...new Set(all.flatMap((e) => e.genres))].sort(cmpText);
+  if (ui.genre && !genres.includes(ui.genre)) ui.genre = '';
   if (ui.artist && !artists.includes(ui.artist)) ui.artist = '';
   if (ui.tag && !tags.includes(ui.tag)) ui.tag = '';
   const opt = (v, label, cur) => `<option value="${esc(v)}"${v === cur ? ' selected' : ''}>${esc(label)}</option>`;
@@ -167,6 +172,7 @@ function renderHistory() {
       </label>
       <div class="filter-row">
         <label><span class="sr-only">Artist</span><select class="select" id="h-artist">${opt('', 'All artists', ui.artist)}${artists.map((a) => opt(a, a, ui.artist)).join('')}</select></label>
+        <label><span class="sr-only">Genre</span><select class="select" id="h-genre">${opt('', 'All genres', ui.genre)}${genres.map((g) => opt(g, g, ui.genre)).join('')}</select></label>
         <label><span class="sr-only">Tag</span><select class="select" id="h-tag">${opt('', 'All tags', ui.tag)}${tags.map((t) => opt(t, t, ui.tag)).join('')}</select></label>
         <label><span class="sr-only">Rating</span><select class="select" id="h-rating">${RATING_FILTERS.map(([v, l]) => opt(v, l, ui.rating)).join('')}</select></label>
       </div>
@@ -176,7 +182,7 @@ function renderHistory() {
 
   const update = () => {
     const items = historyItems();
-    const filtered = ui.q || ui.artist || ui.tag || ui.rating;
+    const filtered = ui.q || ui.artist || ui.genre || ui.tag || ui.rating;
     $('#h-count').textContent = filtered ? `${items.length} of ${all.length} listens` : `${all.length} ${all.length === 1 ? 'listen' : 'listens'}`;
     $('#h-clear').hidden = !filtered;
     $('#h-list').innerHTML = items.length ? groupByMonth(items) : `<div class="empty"><p>${all.length ? 'No listens match.' : 'No listens logged yet.'}</p></div>`;
@@ -184,9 +190,10 @@ function renderHistory() {
   };
   $('#h-q').addEventListener('input', debounce((e) => { ui.q = e.target.value; update(); }, 120));
   $('#h-artist').addEventListener('change', (e) => { ui.artist = e.target.value; update(); });
+  $('#h-genre').addEventListener('change', (e) => { ui.genre = e.target.value; update(); });
   $('#h-tag').addEventListener('change', (e) => { ui.tag = e.target.value; update(); });
   $('#h-rating').addEventListener('change', (e) => { ui.rating = e.target.value; update(); });
-  $('#h-clear').addEventListener('click', () => { Object.assign(ui, { q: '', artist: '', tag: '', rating: '' }); renderHistory(); });
+  $('#h-clear').addEventListener('click', () => { Object.assign(ui, { q: '', artist: '', genre: '', tag: '', rating: '' }); renderHistory(); });
   update();
 }
 
@@ -204,8 +211,8 @@ function groupByMonth(items) {
         <span class="hrow-date"><b>${parseISO(e.date).getDate()}</b>${monthShort(k)}</span>
         ${coverHTML(e, 'xs')}
         <span class="hrow-main">
-          <span class="hrow-title">${esc(e.title)}${e.sample ? ' <span class="badge">Sample</span>' : ''}</span>
-          <span class="hrow-sub">${esc(e.artist)}${e.type === 'song' ? ' · Song' : ''}${e.tags.length ? ' · ' + esc(e.tags.join(', ')) : ''}</span>
+          <span class="hrow-title"><span class="hrow-t">${esc(e.title)}</span>${e.sample ? '<span class="badge">Sample</span>' : ''}</span>
+          <span class="hrow-sub">${esc(e.artist)}${e.type === 'song' ? ' · Song' : ''}${e.genres.length ? ' · ' + esc(e.genres.join(', ')) : ''}${e.tags.length ? ' · ' + esc(e.tags.join(', ')) : ''}</span>
         </span>
         ${e.rating ? starsHTML(e.rating, 'xs') : '<span class="muted small">–</span>'}
       </button>`).join('')}
@@ -244,6 +251,11 @@ function renderStats() {
       <div class="panel-head"><h3>Listens per month</h3><span class="readout" data-readout>${esc(monthData[monthData.length - 1].readout)}</span></div>
       ${columnChart(monthData, { id: 'chart-months' })}
     </div>
+    <div class="panel" id="genre-panel">
+      <div class="panel-head"><h3>Genres</h3><span class="readout">${s.genres.items.length} ${s.genres.items.length === 1 ? 'genre' : 'genres'}</span></div>
+      ${genreChart(s.genres)}
+      ${s.genres.items.length ? `<p class="gnote">Share of listens. A listen with several genres is split evenly between them.${s.genres.without ? ` ${s.genres.without} ${s.genres.without === 1 ? 'listen has' : 'listens have'} no genre.` : ''}</p>` : ''}
+    </div>
     <div class="panel-pair">
       <div class="panel"><div class="panel-head"><h3>Top artists</h3><span class="readout">${s.artists.length} total</span></div>${barList(s.artists)}</div>
       <div class="panel"><div class="panel-head"><h3>Top tags</h3><span class="readout">${s.tags.length} total</span></div>${barList(s.tags, { empty: 'No tags yet.' })}</div>
@@ -254,6 +266,7 @@ function renderStats() {
     </div>`;
   bindColumnChart($('#chart-months'));
   bindColumnChart($('#chart-dist'));
+  bindGenreChart($('#genre-panel'));
 }
 
 // ---------------------------------------------------------------- Data
@@ -422,6 +435,10 @@ function openDetail(id) {
       <div class="section-head"><span class="label">Rating</span>${e.shelf === 'done' && e.date ? `<span class="muted small">${esc(fmtLongDate(e.date))}</span>` : ''}</div>
       <div class="rating-field">${starInputHTML(e.rating, { key: 'main' })}<span class="rating-value">${fmtRating(e.rating)}</span></div>
     </div>
+    ${e.genres.length ? `<div class="section">
+      <div class="section-head"><span class="label">Genres</span></div>
+      <div class="chips">${e.genres.map((g) => `<span class="chip chip-static" style="--chip:${colorVar(g)}">${esc(g)}</span>`).join('')}</div>
+    </div>` : ''}
     ${e.note || e.tags.length ? `<div class="section">
       ${e.note ? `<p class="note">${esc(e.note)}</p>` : ''}
       ${e.tags.length ? `<div class="chips" style="margin-top:${e.note ? 8 : 0}px">${e.tags.map((t) => `<span class="chip chip-static" style="--chip:${colorVar(t)}">${esc(t)}</span>`).join('')}</div>` : ''}
@@ -486,7 +503,7 @@ function openForm({ id, preset } = {}) {
   const existing = id && store.get(id);
   const draft = existing ? structuredClone(existing) : {
     type: 'album', title: '', artist: '', album: '', date: todayISO(), shelf: 'done', rating: 0,
-    note: '', tags: [], year: '', producer: '', label: '', cover: '', tracks: [], mbid: '', ...preset,
+    note: '', genres: [], tags: [], year: '', producer: '', label: '', cover: '', tracks: [], mbid: '', ...preset,
   };
   const qa = { kind: draft.type, results: [], status: '', busy: false };
 
@@ -507,7 +524,31 @@ function openForm({ id, preset } = {}) {
       <ul class="results" id="qa-results"></ul>
     </div>`;
 
-  const suggestions = () => store.allTags().filter((t) => !draft.tags.includes(t)).slice(0, 10);
+  const TOKENS = {
+    genres: { label: 'Genres', placeholder: 'Add a genre' },
+    tags: { label: 'Tags', placeholder: 'Mood, place, occasion' },
+  };
+  const pending = { genres: '', tags: '' };
+  function suggestions(field) {
+    const q = pending[field].trim().toLowerCase();
+    const chosen = new Set(draft[field]);
+    const pool = field === 'genres'
+      ? [...new Set([...store.allGenres(), ...(q ? COMMON_GENRES : STARTER_GENRES)])]
+      : store.allTags();
+    const list = pool.filter((t) => !chosen.has(t) && (!q || t.includes(q)));
+    if (q) list.sort((a, b) => (b.startsWith(q) - a.startsWith(q)));
+    return list.slice(0, 8);
+  }
+  const tokensHTML = (field) => draft[field].map((t) => `<span class="chip chip-static token" style="--chip:${colorVar(t)}">${esc(t)}<button type="button" class="token-x" data-untoken="${field}" data-value="${esc(t)}" aria-label="Remove ${esc(t)}">×</button></span>`).join('');
+  const suggHTML = (field) => suggestions(field).map((t) => `<button type="button" class="chip" data-add="${field}" data-value="${esc(t)}" style="--chip:${colorVar(t)}">+ ${esc(t)}</button>`).join('');
+  const tokenFieldHTML = (field) => `
+    <div class="field"><label class="label" for="f-${field}">${TOKENS[field].label}</label>
+      <div class="tokens" data-tokens="${field}">
+        <span class="tokens-list" id="f-${field}-list">${tokensHTML(field)}</span>
+        <input class="tokens-input" id="f-${field}" data-token-input="${field}" value="${esc(pending[field])}" placeholder="${TOKENS[field].placeholder}" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="done">
+      </div>
+      <div class="chips" id="f-${field}-sugg">${suggHTML(field)}</div>
+    </div>`;
 
   const bodyHTML = () => `
     <div class="form-cover">
@@ -539,9 +580,8 @@ function openForm({ id, preset } = {}) {
       <span class="label" id="f-rating-label">Rating</span>
       <div class="rating-field">${starInputHTML(draft.rating, { key: 'main', label: 'Rating' })}<span class="rating-value">${fmtRating(draft.rating)}</span></div>
     </div>
-    <div class="field"><label class="label" for="f-tags">Tags</label>
-      <input class="input" id="f-tags" name="tags" value="${esc(draft.tags.join(', '))}" placeholder="Genre, mood — separate with commas" autocomplete="off" autocapitalize="none">
-      <div class="chips" id="f-tag-sugg">${tagChips()}</div></div>
+    ${tokenFieldHTML('genres')}
+    ${tokenFieldHTML('tags')}
     <div class="field"><label class="label" for="f-note">Note</label>
       <textarea class="textarea" id="f-note" name="note" rows="2" maxlength="280" placeholder="Optional">${esc(draft.note)}</textarea></div>
     <details class="more"${draft.producer || draft.label || draft.album ? ' open' : ''}>
@@ -565,9 +605,6 @@ function openForm({ id, preset } = {}) {
       <ol class="tracks" id="f-tracks">${tracksHTML()}</ol>
     </div>`;
 
-  function tagChips() {
-    return suggestions().map((t) => `<button type="button" class="chip" data-tag="${esc(t)}" style="--chip:${colorVar(t)}">+ ${esc(t)}</button>`).join('');
-  }
   function tracksHTML() {
     return draft.tracks.map((t, i) => `<li class="track track-edit">
       <span class="track-n">${i + 1}</span>
@@ -589,17 +626,35 @@ function openForm({ id, preset } = {}) {
     const form = $('#entry-form', root);
     const fbody = $('#f-body', root);
 
-    const syncTags = () => {
-      draft.tags = $('#f-tags', root).value.split(',').map((t) => t.trim().toLowerCase()).filter(Boolean);
-      $('#f-tag-sugg', root).innerHTML = tagChips();
+    const refreshTokens = (field) => {
+      $(`#f-${field}-list`, root).innerHTML = tokensHTML(field);
+      $(`#f-${field}-sugg`, root).innerHTML = suggHTML(field);
     };
+    const addTokens = (field, text) => {
+      const parts = String(text).split(',').map((t) => t.trim().toLowerCase().replace(/\s+/g, ' ')).filter(Boolean);
+      parts.forEach((t) => { if (!draft[field].includes(t) && draft[field].length < 12) draft[field].push(t); });
+      return parts.length > 0;
+    };
+    const flushTokens = () => ['genres', 'tags'].forEach((f) => {
+      if (pending[f].trim()) { addTokens(f, pending[f]); pending[f] = ''; const i = $(`#f-${f}`, root); if (i) i.value = ''; refreshTokens(f); }
+    });
     const refreshBody = () => { fbody.innerHTML = bodyHTML(); };
 
     fbody.addEventListener('input', (ev) => {
       const t = ev.target;
       if (t.dataset.trackTitle !== undefined) { draft.tracks[Number(t.dataset.trackTitle)].title = t.value; return; }
+      const field = t.dataset.tokenInput;
+      if (field) {
+        if (t.value.includes(',')) {
+          const parts = t.value.split(',');
+          addTokens(field, parts.slice(0, -1).join(','));
+          t.value = parts[parts.length - 1].trimStart();
+        }
+        pending[field] = t.value;
+        refreshTokens(field);
+        return;
+      }
       if (!t.name) return;
-      if (t.name === 'tags') { draft.tags = t.value.split(',').map((x) => x.trim().toLowerCase()).filter(Boolean); return; }
       draft[t.name] = t.value;
       if (t.name === 'title') t.classList.remove('is-invalid');
       if (t.name === 'cover' || t.name === 'title' || t.name === 'artist') $('#f-cover', root).innerHTML = coverHTML(draft, 'lg');
@@ -608,7 +663,32 @@ function openForm({ id, preset } = {}) {
       const t = ev.target;
       if (t.name === 'type') { draft.type = t.value; $('#f-tracks-wrap', root).hidden = draft.type === 'song'; }
       if (t.name === 'shelf') draft.shelf = t.value;
-      if (t.name === 'tags') syncTags();
+    });
+    fbody.addEventListener('keydown', (ev) => {
+      const field = ev.target.dataset && ev.target.dataset.tokenInput;
+      if (!field) return;
+      if (ev.key === 'Enter') {
+        ev.preventDefault();
+        addTokens(field, ev.target.value);
+        ev.target.value = ''; pending[field] = '';
+        refreshTokens(field);
+      } else if (ev.key === 'Backspace' && !ev.target.value && draft[field].length) {
+        draft[field].pop();
+        refreshTokens(field);
+      }
+    });
+    fbody.addEventListener('focusout', (ev) => {
+      const field = ev.target.dataset && ev.target.dataset.tokenInput;
+      // Keep typed text that was not confirmed.
+      // iOS reports the blur before the tap on a suggestion, so wait for that tap to land first.
+      if (!field) return;
+      const input = ev.target;
+      setTimeout(() => {
+        if (!input.isConnected || document.activeElement === input || !pending[field].trim()) return;
+        addTokens(field, pending[field]);
+        input.value = ''; pending[field] = '';
+        refreshTokens(field);
+      }, 200);
     });
     fbody.addEventListener('rate', (ev) => {
       const key = ev.target.dataset.stars;
@@ -616,11 +696,24 @@ function openForm({ id, preset } = {}) {
       else if (key && key[0] === 't') draft.tracks[Number(key.slice(1))].rating = ev.detail;
     });
     fbody.addEventListener('click', (ev) => {
-      const tag = ev.target.closest('[data-tag]');
-      if (tag) {
-        draft.tags.push(tag.dataset.tag);
-        $('#f-tags', root).value = draft.tags.join(', ');
-        $('#f-tag-sugg', root).innerHTML = tagChips();
+      const add = ev.target.closest('[data-add]');
+      if (add) {
+        const field = add.dataset.add;
+        addTokens(field, add.dataset.value);
+        pending[field] = '';
+        $(`#f-${field}`, root).value = '';
+        refreshTokens(field);
+        return;
+      }
+      const untoken = ev.target.closest('[data-untoken]');
+      if (untoken) {
+        const field = untoken.dataset.untoken;
+        draft[field] = draft[field].filter((t) => t !== untoken.dataset.value);
+        refreshTokens(field);
+        return;
+      }
+      if (ev.target.closest('.tokens') && !ev.target.closest('input')) {
+        ev.target.closest('.tokens').querySelector('input').focus();
         return;
       }
       const del = ev.target.closest('[data-track-del]');
@@ -639,7 +732,7 @@ function openForm({ id, preset } = {}) {
 
     form.addEventListener('submit', (ev) => {
       ev.preventDefault();
-      syncTags();
+      flushTokens();
       if (!draft.title.trim()) {
         const t = $('#f-title', root);
         t.classList.add('is-invalid');
@@ -718,9 +811,10 @@ function openForm({ id, preset } = {}) {
         if (my === token) setStatus(`Filled in the basics. ${err.message}`);
       }
       if (my !== token) return;
-      const userTags = draft.tags;
+      const userGenres = draft.genres;
       Object.assign(draft, fields, {
-        tags: [...new Set([...userTags, ...(fields.tags || [])])],
+        tags: draft.tags,
+        genres: [...new Set([...userGenres, ...(fields.genres || [])])].slice(0, 12),
         tracks: (fields.tracks || []).map((t) => ({ ...t, rating: 0 })),
       });
       refreshBody();
@@ -770,6 +864,7 @@ installStarInputs(document);
 store.seedIfNeeded(makeSamples);
 store.subscribe(() => { if (!sheet.open) render(); });
 render();
+if (store.loadError()) toast('Saved data could not be read. A copy was kept on this device.');
 
 // Re-render when the date changes (e.g. app left open overnight).
 let lastDay = todayISO();
@@ -786,5 +881,5 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     reloading = true;
     location.reload();
   });
-  navigator.serviceWorker.register('sw.js').then((reg) => reg.update()).catch((err) => console.warn('Service worker not registered', err));
+  navigator.serviceWorker.register('sw.js').then((reg) => reg && reg.update()).catch((err) => console.warn('Service worker not registered', err));
 }
