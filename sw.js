@@ -1,6 +1,6 @@
 // Service worker: keeps the app shell available offline and caches album covers.
 // Bump VERSION when you change the list of shell files.
-const VERSION = 'v2';
+const VERSION = 'v3';
 const SHELL_CACHE = `listening-shell-${VERSION}`;
 const COVER_CACHE = 'listening-covers';
 const COVER_LIMIT = 150; // opaque responses count heavily toward storage quota
@@ -23,6 +23,15 @@ const SHELL = [
   'icons/icon-512.png',
   'icons/maskable-512.png',
   'icons/apple-touch-icon.png',
+  'fonts/bricolage-grotesque-latin-600-normal.woff2',
+  'fonts/bricolage-grotesque-latin-800-normal.woff2',
+  'fonts/instrument-serif-latin-400-normal.woff2',
+  'fonts/instrument-serif-latin-400-italic.woff2',
+  'fonts/manrope-latin-500-normal.woff2',
+  'fonts/manrope-latin-600-normal.woff2',
+  'fonts/manrope-latin-700-normal.woff2',
+  'fonts/dm-mono-latin-400-normal.woff2',
+  'fonts/dm-mono-latin-500-normal.woff2',
 ];
 
 self.addEventListener('install', (event) => {
