@@ -1,6 +1,6 @@
 // Service worker: keeps the app shell available offline and caches album covers.
 // Bump VERSION when you change the list of shell files.
-const VERSION = 'v3';
+const VERSION = 'v4';
 const SHELL_CACHE = `listening-shell-${VERSION}`;
 const COVER_CACHE = 'listening-covers';
 const COVER_LIMIT = 150; // opaque responses count heavily toward storage quota
@@ -17,6 +17,7 @@ const SHELL = [
   'js/stats.js',
   'js/charts.js',
   'js/util.js',
+  'js/genres.js',
   'manifest.webmanifest',
   'icons/icon.svg',
   'icons/icon-192.png',
